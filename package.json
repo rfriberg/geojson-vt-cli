@@ -1,0 +1,26 @@
+{
+  "name": "geojson-vt-cli",
+  "version": "1.0.0",
+  "description": "Tile vector data using geojson-vt on the command line",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "bin": {
+    "tile": "bin/tile"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rfriberg/geojson-vt-cli.git"
+  },
+  "author": "rfriberg",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/rfriberg/geojson-vt-cli/issues"
+  },
+  "homepage": "https://github.com/rfriberg/geojson-vt-cli#readme",
+  "dependencies": {
+    "geojson-vt": "^2.4.0",
+    "minimist": "^1.2.0"
+  }
+}
