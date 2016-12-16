@@ -1,4 +1,5 @@
 var geojsonVt = require('geojson-vt');
+var vtpbf = require('vt-pbf');
 var fs = require("fs");
 var argv = require('minimist')(process.argv.slice(2));
 
@@ -12,10 +13,9 @@ if (!path) {
 console.log('load from: ' + path);
 
 // output name may be passed in via --out= or -o | defaults to 'output.json'
-var output = argv.out || argv.o || 'output.json';
-console.log('output to: ' + output);
+//var output = argv.out || argv.o || 'output.json';
+//console.log('output to: ' + output);
 
-//var orig = JSON.parse(fs.readFileSync(__dirname + '/data/route.json'));
 var orig = JSON.parse(fs.readFileSync(path));
 
 var tileOptions = {
@@ -23,7 +23,7 @@ var tileOptions = {
     tolerance: 5, // simplification tolerance (higher means simpler)
     extent: 4096, // tile extent (both width and height)
     buffer: 64,   // tile buffer on each side
-    debug: 2,      // logging level (0 to disable, 1 or 2)
+    debug: 1,      // logging level (0 to disable, 1 or 2)
 
     indexMaxZoom: 0,        // max zoom in the initial tile index
     indexMaxPoints: 100000, // max number of points per tile in the index
@@ -32,10 +32,36 @@ var tileOptions = {
 
 var tileindex = geojsonVt(orig, tileOptions);
 
-var tile = tileindex.getTile(1, 0, 0);
-if (!tile) {
-  console.log('tile at [1, 0, 0] is empty');
-  return;
+// TODO: replace with incoming arvg
+var zoom = 6;
+
+if (!fs.existsSync(zoom + '/')){
+    fs.mkdirSync(zoom + '/');
 }
 
-fs.writeFileSync(output, JSON.stringify(tile))
+// TODO: replace with incoming arvg
+for (var x = 9; x < 21; x++) {
+  var path = zoom + '/' + x; // + '/';
+
+  for (var y = 21; y < 28; y++) {
+    var tile = tileindex.getTile(zoom, x, y);
+    if (!tile) {
+      console.log('NO TILE AT ' + x + ', ' + y);
+      break;
+    }
+
+    var buff = vtpbf.fromGeojsonVt({ 'geojsonLayer': tile });
+    if (!buff) {
+      console.log('NO BUFF AT ' + x + ', ' + y);
+      break;
+    } 
+
+    if (!fs.existsSync(path)){
+        fs.mkdirSync(path);
+    }
+
+    fs.writeFileSync(path + '/' + y + '.mvt', buff);
+
+  }
+}
+
