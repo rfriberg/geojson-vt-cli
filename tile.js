@@ -1,22 +1,32 @@
 var geojsonVt = require('geojson-vt');
 var vtpbf = require('vt-pbf');
 var fs = require("fs");
-var argv = require('minimist')(process.argv.slice(2));
+var argv = require('minimist')(process.argv.slice(2), {
+  alias: { d: 'data', o: 'out', z: 'zoom' },
+  default: { z: '5', o: 'cache/' }
+});
 
-// path to data may be passed in via --data= or -d
-// e.g. node tile.js --data=./data/route.json
-var path = argv.data || argv.d;
-if (!path) {
-  console.log('Need to specify path to data; aborting');
+//console.log(argv);
+
+var input = argv.d;
+var output = argv.o;
+var zoom = argv.z;
+
+
+if (!input) {
+  console.log('Need to specify path to data; aborting.');
+  console.log('Try running: node tile.js --data=path/to/data.js');
   return;
 }
-console.log('load from: ' + path);
+var orig = JSON.parse(fs.readFileSync(input));
 
-// output name may be passed in via --out= or -o | defaults to 'output.json'
-//var output = argv.out || argv.o || 'output.json';
-//console.log('output to: ' + output);
 
-var orig = JSON.parse(fs.readFileSync(path));
+// Create output directory
+if (!fs.existsSync(output)){
+  fs.mkdirSync(output);
+}
+console.log('Writing files to ' + output);
+
 
 var tileOptions = {
     maxZoom: 16,  // max zoom to preserve detail on
@@ -28,40 +38,54 @@ var tileOptions = {
     indexMaxZoom: 0,        // max zoom in the initial tile index
     indexMaxPoints: 100000, // max number of points per tile in the index
 };
-
-
 var tileindex = geojsonVt(orig, tileOptions);
 
-// TODO: replace with incoming arvg
-var zoom = 6;
 
-if (!fs.existsSync(zoom + '/')){
-    fs.mkdirSync(zoom + '/');
-}
 
-// TODO: replace with incoming arvg
-for (var x = 9; x < 21; x++) {
-  var path = zoom + '/' + x; // + '/';
+var start_zoom = 1;
+var end_zoom = zoom;
+var start_x = 0;
+var end_x = 1;
+var start_y = 0;
+var end_y = 1;
 
-  for (var y = 21; y < 28; y++) {
-    var tile = tileindex.getTile(zoom, x, y);
-    if (!tile) {
-      console.log('NO TILE AT ' + x + ', ' + y);
-      break;
-    }
+for (var z = start_zoom; z <= end_zoom; z++) {
 
-    var buff = vtpbf.fromGeojsonVt({ 'geojsonLayer': tile });
-    if (!buff) {
-      console.log('NO BUFF AT ' + x + ', ' + y);
-      break;
-    } 
-
-    if (!fs.existsSync(path)){
-        fs.mkdirSync(path);
-    }
-
-    fs.writeFileSync(path + '/' + y + '.mvt', buff);
-
+  // Create 'z' directory
+  if (!fs.existsSync(output + '/' + z + '/')){
+      fs.mkdirSync(output + '/' + z + '/');
   }
+
+  for (var x = start_x; x <= end_x; x++) {
+    var path = output + '/' + z + '/' + x;
+
+    for (var y = start_y; y <= end_y; y++) {
+      var tile = tileindex.getTile(z, x, y);
+      if (!tile) {
+        console.log('NO TILE AT: ' + z + ', ' + x + ', ' + y + ' (skipping)');
+        break;
+      }
+
+      var buff = vtpbf.fromGeojsonVt({ 'geojsonLayer': tile });
+      if (!buff) {
+        console.log('ERROR CREATING BUFF AT ' + z + ', ' + x + ', ' + y);
+        break;
+      } 
+
+      // Create 'x' directory
+      if (!fs.existsSync(path)){
+          fs.mkdirSync(path);
+      }
+
+      fs.writeFileSync(path + '/' + y + '.mvt', buff);
+
+    }
+  }
+
+  // At each zoom level, end_x and end_y will grow
+  end_x = end_x * 2 + 1;
+  end_y = end_y * 2 + 1;
 }
+
+
 
